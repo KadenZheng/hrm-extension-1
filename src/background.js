@@ -1,4 +1,5 @@
 let accumulatedData = [];
+let sendHeartRateInterval;
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.data) {
@@ -26,7 +27,19 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
               console.error("Error:", data.error);
               sendResponse({ error: data.error });
             } else {
-              console.log(`Heart Rate: ${data.heart_rate.toFixed(2)} BPM`);
+              if (sendHeartRateInterval) {
+                clearInterval(sendHeartRateInterval);
+              }
+              sendHeartRateInterval = setInterval(() => {
+                chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+                  if (tabs && tabs.length > 0) {
+                    chrome.tabs.sendMessage(tabs[0].id, { heart_rate: data.heart_rate.toFixed(2) });
+                  } else {
+                    console.error("No active tab found in the current window.");
+                  }
+                });
+              }, 1000); // Send heart rate every second
+
               sendResponse({ heart_rate: data.heart_rate.toFixed(2), r_peaks: data.r_peaks });
             }
           })
@@ -55,4 +68,3 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
   return true; // Keep the messaging channel open for async response
 });
-

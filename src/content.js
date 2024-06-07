@@ -27,3 +27,21 @@ window.addEventListener("message", (event) => {
 // window.addEventListener("load", () => {
 //   window.postMessage({ type: "REQUEST_CONFIG" }, "*");
 // });
+
+chrome.runtime.onMessage.addListener((message) => {
+  if (message.heart_rate) {
+    let heartRateElement = document.getElementById("heart-rate");
+    if (!heartRateElement) {
+      heartRateElement = document.createElement("div");
+      heartRateElement.id = "heart-rate";
+      heartRateElement.style.position = "fixed";
+      heartRateElement.style.top = "10px";
+      heartRateElement.style.right = "10px";
+      heartRateElement.style.backgroundColor = "white";
+      heartRateElement.style.padding = "10px";
+      heartRateElement.style.border = "1px solid black";
+      document.body.appendChild(heartRateElement);
+    }
+    heartRateElement.textContent = `Heart Rate: ${message.heart_rate} BPM`;
+  }
+});

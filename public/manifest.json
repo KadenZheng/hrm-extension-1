@@ -3,7 +3,7 @@
   "name": "Signal Viewer Extension",
   "version": "1.0",
   "description": "Chrome extension to interact with Signal Viewer API",
-  "permissions": ["activeTab", "scripting", "storage"],
+  "permissions": ["activeTab", "scripting", "storage", "tabs"],
   "background": {
     "service_worker": "background.js"
   },
