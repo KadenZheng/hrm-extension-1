@@ -11,7 +11,7 @@ window.addEventListener("message", (event) => {
       if (filteredSignalData) {
         setInterval(() => {
           chrome.runtime.sendMessage({ data: filteredSignalData });
-        }, 10000); // 1000 milliseconds = 1 second
+        }, 1000); // 1000 milliseconds = 1 second
       }
       break;
     case "CONFIG_DATA":
