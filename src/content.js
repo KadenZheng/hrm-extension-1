@@ -7,11 +7,16 @@ window.addEventListener("message", (event) => {
       console.log("EXTENSION: DATA_RESPONSE received:", event.data.payload);
       break;
     case "FILTERED_DATA":
-      const filteredSignalData = localStorage.getItem("Filtered Signal Data");
-      if (filteredSignalData) {
-        setInterval(() => {
-          chrome.runtime.sendMessage({ data: filteredSignalData });
-        }, 1000); // 1000 milliseconds = 1 second
+      if (!window.heartRateInterval) {
+        console.log("setting interval");
+        window.heartRateInterval = setInterval(() => {
+          const filteredSignalData = localStorage.getItem("Filtered Signal Data");
+          console.log("Retrieved from localStorage:", filteredSignalData);
+          if (filteredSignalData) {
+            console.log("Sending data:", filteredSignalData);
+            chrome.runtime.sendMessage({ data: filteredSignalData });
+          }
+        }, 25);
       }
       break;
     case "CONFIG_DATA":

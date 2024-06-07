@@ -1,15 +1,19 @@
 let accumulatedData = [];
-let sendHeartRateInterval;
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.data) {
     let filteredSignalData = JSON.parse(message.data);
     let diiSignalData = filteredSignalData["DII"];
+    console.log("Received data:", diiSignalData);
 
     if (diiSignalData) {
+      accumulatedData = accumulatedData.slice(-2500); // Remove old points
       accumulatedData.push(...diiSignalData);
+      console.log("accumulated data:", accumulatedData.length);
 
       if (accumulatedData.length >= 2500) {
+        console.log("enough data");
+        console.log(accumulatedData);
         // Send the DII signal data to the Python server
         fetch("http://localhost:5000/calculate_heart_rate", {
           method: "POST",
@@ -17,7 +21,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
             "Content-Type": "application/json",
           },
           body: JSON.stringify({
-            dii_signal: accumulatedData.slice(0, 2500),
+            dii_signal: accumulatedData.slice(-2500), // Changed this line
             fs: 1000,
           }),
         })
@@ -27,19 +31,14 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
               console.error("Error:", data.error);
               sendResponse({ error: data.error });
             } else {
-              if (sendHeartRateInterval) {
-                clearInterval(sendHeartRateInterval);
-              }
-              sendHeartRateInterval = setInterval(() => {
-                chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-                  if (tabs && tabs.length > 0) {
-                    chrome.tabs.sendMessage(tabs[0].id, { heart_rate: data.heart_rate.toFixed(2) });
-                  } else {
-                    console.error("No active tab found in the current window.");
-                  }
-                });
-              }, 1000); // Send heart rate every second
-
+              console.log(data.heart_rate.toFixed(2));
+              chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+                if (tabs && tabs.length > 0) {
+                  chrome.tabs.sendMessage(tabs[0].id, { heart_rate: data.heart_rate.toFixed(2) });
+                } else {
+                  console.error("No active tab found in the current window.");
+                }
+              });
               sendResponse({ heart_rate: data.heart_rate.toFixed(2), r_peaks: data.r_peaks });
             }
           })
@@ -54,6 +53,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
         // Remove the sent data from the accumulated data
         accumulatedData = accumulatedData.slice(2500);
+        console.log("Data after slicing:", accumulatedData.length); // Add this line
       } else {
         sendResponse({ message: "Not enough data accumulated yet" });
       }
