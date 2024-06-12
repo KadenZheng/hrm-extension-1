@@ -18,7 +18,7 @@ window.addEventListener("message", (event) => {
                         // console.log("Sending data:", filteredSignalData);
                         chrome.runtime.sendMessage({ data: filteredSignalData });
                     }
-                }, 25);
+                }, 1);
             }
             break;
         case "CONFIG_DATA":
@@ -44,10 +44,11 @@ chrome.runtime.onMessage.addListener((message) => {
             heartRateElement.id = "heart-rate";
             heartRateElement.style.position = "fixed";
             heartRateElement.style.top = "10px";
-            heartRateElement.style.right = "10px";
-            heartRateElement.style.backgroundColor = "white";
+            heartRateElement.style.left = "10px";
+            heartRateElement.style.color = "white";
+            // heartRateElement.style.backgroundColor = "white";
             heartRateElement.style.padding = "10px";
-            heartRateElement.style.border = "1px solid black";
+            // heartRateElement.style.border = "1px solid black";
             document.body.appendChild(heartRateElement);
         }
         heartRateElement.textContent = `Heart Rate: ${message.heart_rate} BPM`;

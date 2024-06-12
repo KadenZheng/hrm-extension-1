@@ -17,6 +17,7 @@ def bandpass_filter(signal, lowcut, highcut, fs, order=1):
     return y
 
 def calculate_heart_rate(signal, fs):
+    logging.info(f"Length: {len(signal)}")
     if len(signal) == 0:
         return np.nan, []
 
@@ -26,11 +27,11 @@ def calculate_heart_rate(signal, fs):
     # Detect R-peaks
     mean_height = np.mean(filtered_signal)
     peaks, properties = find_peaks(filtered_signal, distance=fs/2.5, height=mean_height)
-    logging.info(f"PEAKS PEAKS PEAKS: {peaks}")
+    # logging.info(f"PEAKS PEAKS PEAKS: {peaks}")
     
-    logging.info(f"Filtered Signal: {filtered_signal}")
-    logging.info(f"Detected Peaks: {peaks}")
-    logging.info(f"Peak Properties: {properties}")
+    # logging.info(f"Filtered Signal: {filtered_signal}")
+    # logging.info(f"Detected Peaks: {peaks}")
+    # logging.info(f"Peak Properties: {properties}")
 
     logging.info(f"Peaks: {peaks}")
     if len(peaks) < 2:

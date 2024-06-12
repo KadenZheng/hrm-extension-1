@@ -9,11 +9,11 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         // console.log("Received data:", diiSignalData);
 
         if (diiSignalData) {
-            accumulatedData = accumulatedData.slice(-2500); // Remove old points
+            accumulatedData = accumulatedData.slice(-15000); // Remove old points
             accumulatedData.push(...diiSignalData);
             // console.log("accumulated data:", accumulatedData.length);
 
-            if (accumulatedData.length >= 2500) {
+            if (accumulatedData.length >= 15000) {
                 console.log("enough data");
                 // console.log(accumulatedData);
                 // Send the DII signal data to the Python server
@@ -23,7 +23,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
                         "Content-Type": "application/json",
                     },
                     body: JSON.stringify({
-                        dii_signal: accumulatedData.slice(-2500), // Changed this line
+                        dii_signal: accumulatedData.slice(-15000), // Changed this line
                         fs: 1000,
                     }),
                 })
@@ -54,7 +54,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
                     });
 
                 // Remove the sent data from the accumulated data
-                accumulatedData = accumulatedData.slice(2500);
+                accumulatedData = accumulatedData.slice(15000);
                 // console.log("Data after slicing:", accumulatedData.length); // Add this line
             } else {
                 sendResponse({ message: "Not enough data accumulated yet" });
