@@ -34,7 +34,7 @@ window.addEventListener("message", (event) => {
 // window.addEventListener("load", () => {
 //   window.postMessage({ type: "REQUEST_CONFIG" }, "*");
 // });
-
+``
 chrome.runtime.onMessage.addListener((message) => {
     if (message.heart_rate) {
         console.log(message.heart_rate);
