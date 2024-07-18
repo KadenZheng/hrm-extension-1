@@ -1,72 +1,108 @@
 /* global chrome */
+console.log("Background script starting...");
 
+import "../public/pyodide/pyodide.asm.js";
+import { loadPyodide } from "../public/pyodide/pyodide.mjs";
 let accumulatedData = [];
+
+let pyodide;
+
+async function main() {
+    pyodide = await loadPyodide({
+        indexURL: chrome.runtime.getURL("pyodide/"),
+    });
+
+    await pyodide.loadPackage("micropip");
+    const micropip = pyodide.pyimport("micropip");
+
+    await micropip.install("numpy");
+    await micropip.install("scipy");
+
+    await pyodide.runPythonAsync(`
+    import numpy as np
+    from scipy import signal
+
+    def bandpass_filter(signal_data, lowcut, highcut, fs, order=1):
+        nyquist = 0.5 * fs
+        low = lowcut / nyquist
+        high = highcut / nyquist
+        b, a = signal.butter(order, [low, high], btype='band')
+        y = signal.filtfilt(b, a, signal_data)
+        return y
+
+    def calculate_heart_rate(signal_data, fs):
+        if len(signal_data) == 0:
+            return np.nan, []
+
+        # Band-pass filter
+        filtered_signal = bandpass_filter(signal_data, 0.5, 40, fs)
+        
+        # Detect R-peaks
+        mean_height = np.mean(filtered_signal)
+        peaks, _ = signal.find_peaks(filtered_signal, distance=fs/2.5, height=mean_height)
+        
+        if len(peaks) < 2:
+            return np.nan, peaks.tolist()
+
+        # Calculate RR intervals
+        rr_intervals = np.diff(peaks) / fs
+
+        if len(rr_intervals) == 0:
+            return np.nan, peaks.tolist()
+
+        # Calculate heart rate
+        heart_rate = 60 / np.mean(rr_intervals)
+        
+        return heart_rate, peaks.tolist()
+  `);
+
+    console.log("Pyodide setup complete");
+}
+
+main().catch(console.error);
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     if (message.data) {
         let filteredSignalData = JSON.parse(message.data);
         let diiSignalData = filteredSignalData["DII"];
-        // console.log("Received data:", diiSignalData);
 
         if (diiSignalData) {
-            accumulatedData = accumulatedData.slice(-15000); // Remove old points
-            accumulatedData.push(...diiSignalData);
-            // console.log("accumulated data:", accumulatedData.length);
+            accumulatedData = [...accumulatedData.slice(-15000), ...diiSignalData];
 
             if (accumulatedData.length >= 15000) {
-                console.log("enough data");
-                // console.log(accumulatedData);
-                // Send the DII signal data to the Python server
-                fetch("http://localhost:5000/calculate_heart_rate", {
-                    method: "POST",
-                    headers: {
-                        "Content-Type": "application/json",
-                    },
-                    body: JSON.stringify({
-                        dii_signal: accumulatedData.slice(-15000), // Changed this line
-                        fs: 1000,
-                    }),
-                })
-                    .then((response) => response.json())
-                    .then((data) => {
-                        if (data.error) {
-                            console.error("Error:", data.error);
-                            sendResponse({ error: data.error });
-                        } else {
-                            console.log(data.heart_rate.toFixed(2));
-                            chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-                                if (tabs && tabs.length > 0) {
-                                    chrome.tabs.sendMessage(tabs[0].id, { heart_rate: data.heart_rate.toFixed(2) });
-                                } else {
-                                    console.error("No active tab found in the current window.");
-                                }
-                            });
-                            sendResponse({ heart_rate: data.heart_rate.toFixed(2), r_peaks: data.r_peaks });
+                try {
+                    let result = pyodide.runPython(`
+            signal = np.array(${JSON.stringify(accumulatedData)})
+            heart_rate, peaks = calculate_heart_rate(signal, 1000)
+            {"heart_rate": float(heart_rate), "r_peaks": peaks}
+          `);
+
+                    let heartRate = result.heart_rate.toFixed(2);
+
+                    // Send heart rate to active tab
+                    chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+                        if (tabs && tabs.length > 0) {
+                            chrome.tabs.sendMessage(tabs[0].id, { heart_rate: heartRate });
                         }
-                    })
-                    .catch((error) => {
-                        console.error("Error:", error);
-                        sendResponse({ error: error.message });
-                    })
-                    .finally(() => {
-                        // Ensure the message channel is closed
-                        return true;
                     });
 
-                // Remove the sent data from the accumulated data
+                    sendResponse({ heart_rate: heartRate, r_peaks: result.r_peaks });
+                } catch (error) {
+                    sendResponse({ error: error.message });
+                }
+
                 accumulatedData = accumulatedData.slice(15000);
-                // console.log("Data after slicing:", accumulatedData.length); // Add this line
             } else {
                 sendResponse({ message: "Not enough data accumulated yet" });
             }
         } else {
-            console.log("DII signal not found in the data");
             sendResponse({ error: "DII signal not found in the data" });
         }
     } else {
-        console.log("EXTENSION: Could not receive filteredData");
         sendResponse({ error: "Could not receive filteredData" });
     }
 
-    return true; // Keep the messaging channel open for async response
+    return true;
 });
+
+console.log("Background script loaded");
